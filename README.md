@@ -78,3 +78,87 @@ services:
             - ./db_scripts:/docker-entrypoint-initdb.d
 
 ```
+3. Запустить с помощью docker compose приложение
+
+   Dockerfile backend
+
+```
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+```
+
+config nginx
+
+```
+pstream back {
+                server 192.168.1.17:8000;
+        }
+server {
+        listen 80;
+        server_name localhost;
+        location / {
+                root /usr/share/nginx/html;
+                index index.html;
+        }
+        location /health {
+                proxy_pass http://back/health;
+        }
+        location /docs {
+                proxy_pass http://back/docs;
+        }
+        location /courses {
+                proxy_pass http://back/courses;
+        }
+}
+
+```
+
+docker-compose
+
+```
+services:
+    front:
+        image: nginx:alpine
+        volumes:
+            - ./default.conf:/etc/nginx/conf.d/default.conf
+            - ./static/index.html:/usr/share/nginx/html/index.html
+        ports:
+            - "80:80"
+        depends_on:
+            - back
+    back:
+        build: ./api
+        environment:
+            DB_HOST: ${DB_HOST}
+            DB_USER: ${DB_USER}
+            DB_PASSWORDD: ${DB_PASSWORD}
+            DB_NAME: ${DB_NAME}
+        restart: unless-stopped
+        ports:
+          - "8000:8000"
+        depends_on:
+            - db
+    db:
+        image: mariadb
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_HOST: ${DB_HOST}
+            MYSQL_USER: ${DB_USER}
+            MYSQL_PASSWORDD: ${DB_PASSWORD}
+            MYSQL_NAME: ${DB_NAME}
+        ports:
+            - "3306:3306"
+        volumes:
+            - ./data:/var/lib/mysql
+            - ./db_scripts:/docker-entrypoint-initdb.d
+
+```
+
+<img width="1339" height="827" alt="изображение" src="https://github.com/user-attachments/assets/a34288e9-47d3-459e-a5d3-a984bc36b336" />
+
