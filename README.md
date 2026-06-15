@@ -95,7 +95,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 config nginx
 
 ```
-pstream back {
+upstream back {
                 server 192.168.1.17:8000;
         }
 server {
